@@ -1,0 +1,332 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fim de Estoque - Mobile</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script type="module" src="firebase-banco.js"></script>
+  <script>
+      function checarAcesso() {
+          if (!localStorage.getItem("usuarioLogado")) {
+              document.documentElement.style.display = "none";
+              window.location.replace("index.html");
+          }
+      }
+      checarAcesso();
+  </script>
+  <style>
+    /* =========================================
+       ESTILOS EXCLUSIVOS PARA MOBILE (APP FEEL)
+       ========================================= */
+    body {
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        padding-bottom: 30px;
+    }
+    
+    .container-mobile {
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .container-mobile h2 {
+        font-size: 22px;
+        text-align: center;
+        color: #c0392b; /* Vermelho para Fim de Estoque */
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Painel do Valor Total do Estoque Baixo (Vermelho) */
+    .card-total-fixo {
+        background: linear-gradient(135deg, #c0392b, #e74c3c);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(231, 76, 60, 0.3);
+        margin-bottom: 20px;
+    }
+
+    .card-total-fixo span {
+        display: block;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+
+    .card-total-fixo h3 {
+        margin: 5px 0 0 0;
+        font-size: 28px;
+        font-weight: bold;
+        color: #ffffff; 
+    }
+
+    /* Barra de Busca e Botões */
+    .acoes-topo-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .acoes-topo-mobile input {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px; /* 16px evita zoom automático no iPhone */
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+
+    .botoes-topo-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .botoes-topo-row button {
+        flex: 1;
+        padding: 15px 10px;
+        font-size: 15px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* Lista de Produtos (Cards) */
+    .lista-produtos-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .card-produto {
+        background: #fffafa; /* Fundo levemente avermelhado */
+        border-left: 5px solid #e74c3c; /* Borda vermelha de alerta */
+        border-radius: 10px;
+        padding: 18px;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .prod-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid #fee;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+    }
+
+    .prod-nome {
+        font-size: 18px;
+        font-weight: bold;
+        color: #c0392b; /* Nome também em vermelho escuro */
+        margin: 0;
+        word-wrap: break-word;
+        flex: 1;
+    }
+
+    .prod-codigo {
+        font-size: 12px;
+        color: #e74c3c;
+        background: #fdf0f0;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-left: 10px;
+        white-space: nowrap;
+        border: 1px solid #fadbd8;
+    }
+
+    .prod-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 15px;
+    }
+
+    .prod-info-row span.label {
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+
+    .prod-info-row span.valor {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .destaque-qtd {
+        color: #e74c3c !important;
+        font-size: 18px !important;
+        font-weight: 900 !important;
+    }
+
+    .msg-vazia {
+        text-align: center;
+        color: #27ae60; /* Verde pois estoque vazio aqui significa que está tudo bem (não há produtos acabando) */
+        font-size: 16px;
+        padding: 30px 10px;
+        font-weight: bold;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container-mobile" id="area-impressao">
+    <h2>⚠️ Fim de Estoque</h2>
+
+    <div class="card-total-fixo">
+        <span>Capital Parado (Estoque Baixo)</span>
+        <h3 id="total-low-stock-value">R$ 0,00</h3>
+    </div>
+    
+    <div class="acoes-topo-mobile" id="area-botoes">
+      <input type="text" id="filtroInput" placeholder="🔍 Filtrar por nome ou código..." />
+      
+      <div class="botoes-topo-row">
+       
+        <button onclick="window.location.href='sistema.html'" style="background-color: #34495e;">⬅️ Voltar</button>
+      </div>
+    </div>
+    
+    <div class="lista-produtos-mobile" id="container-lista-produtos">
+        <p class="msg-vazia" style="color: #7f8c8d;">Analisando níveis de estoque...</p>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    // 1. Função que desenha os Cards
+    function atualizarListaBaixoEstoque() {
+      if (typeof window.obterDados !== "function") return;
+
+      var produtos = window.obterDados("produtos");
+      if (!produtos) { produtos = {}; }
+
+      var filtroInput = document.getElementById("filtroInput");
+      var container = document.getElementById("container-lista-produtos");
+      var totalElement = document.getElementById("total-low-stock-value");
+
+      var filtro = filtroInput ? filtroInput.value.toLowerCase().trim() : "";
+      var total = 0;
+      var filtrados = [];
+
+      var chaves = Object.keys(produtos);
+      for (var i = 0; i < chaves.length; i++) {
+          var codigo = chaves[i];
+          var p = produtos[codigo];
+          
+          // Regra: menor ou igual a 5 unidades E maior que zero
+          if (p.quantidade <= 5 && p.quantidade > 0) {
+              if (codigo.toLowerCase().includes(filtro) || p.nome.toLowerCase().includes(filtro)) {
+                  filtrados.push({ codigo: codigo, p: p });
+              }
+          }
+      }
+
+      container.innerHTML = "";
+      
+      if (filtrados.length === 0) {
+        container.innerHTML = "<p class='msg-vazia'>✅ Tudo certo! Nenhum produto acabando no estoque.</p>";
+        totalElement.innerText = "R$ 0,00";
+        return;
+      }
+
+      // Ordena alfabeticamente pelo nome para organizar a lista
+      filtrados.sort((a, b) => a.p.nome.localeCompare(b.p.nome));
+
+      // Preenche a tela com os Cards
+      filtrados.forEach(function(item) {
+        var codigo = item.codigo;
+        var p = item.p;
+        var valorTotal = p.quantidade * p.valor;
+        total += valorTotal;
+
+        var div = document.createElement("div");
+        div.className = "card-produto";
+        
+        div.innerHTML = `
+            <div class="prod-header">
+                <h3 class="prod-nome">${p.nome}</h3>
+                <span class="prod-codigo">Cód: ${codigo}</span>
+            </div>
+            <div class="prod-info-row">
+                <span class="label">Restam apenas:</span>
+                <span class="valor destaque-qtd">${p.quantidade} un</span>
+            </div>
+            <div class="prod-info-row">
+                <span class="label">Valor Unitário:</span>
+                <span class="valor">R$ ${p.valor.toFixed(2)}</span>
+            </div>
+            <div class="prod-info-row" style="margin-top: 5px; border-top: 1px dashed #fadbd8; padding-top: 5px;">
+                <span class="label">Total em Dinheiro:</span>
+                <span class="valor">R$ ${valorTotal.toFixed(2)}</span>
+            </div>
+        `;
+        container.appendChild(div);
+      });
+      
+      // Atualiza o painel vermelho lá em cima
+      totalElement.innerText = "R$ " + total.toFixed(2);
+    }
+
+    // ==========================================
+    // 2. GATILHOS DE ATUALIZAÇÃO
+    // ==========================================
+    document.addEventListener("dadosAtualizados", atualizarListaBaixoEstoque);
+    document.addEventListener("bancoPronto", atualizarListaBaixoEstoque);
+    
+    var inputFiltro = document.getElementById("filtroInput");
+    if (inputFiltro) {
+        inputFiltro.addEventListener("input", atualizarListaBaixoEstoque);
+    }
+
+    if (window.isBancoPronto) {
+        atualizarListaBaixoEstoque();
+    }
+
+    // ==========================================
+    // 3. FUNÇÃO DE SALVAR PDF ADAPTADA PARA CARDS
+    // ==========================================
+    var btnPdf = document.getElementById("btnSalvarPDF");
+    if (btnPdf) {
+      btnPdf.addEventListener("click", function() {
+        var element = document.getElementById("area-impressao");
+        var areaBotoes = document.getElementById("area-botoes");
+        
+        // Esconde os botões e a busca temporariamente para não sair no PDF
+        areaBotoes.style.display = "none";
+        
+        var dataLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+        var dataFormatada = dataLocal.toISOString().split("T")[0];
+
+        var opt = {
+          margin: [10, 10, 10, 10], // Margens do PDF
+          filename: "relatorio_fim_de_estoque_" + dataFormatada + ".pdf",
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+        };
+        
+        html2pdf().set(opt).from(element).save().then(function() {
+            // Mostra os botões de volta após gerar o PDF
+            areaBotoes.style.display = "flex";
+        });
+      });
+    }
+  </script>
+</body>
+</html>

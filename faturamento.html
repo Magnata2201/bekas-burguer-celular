@@ -1,0 +1,300 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Faturamento - Mobile</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+  <script type="module" src="firebase-banco.js"></script>
+  <script>
+      function checarAcesso() {
+          if (!localStorage.getItem("usuarioLogado")) {
+              document.documentElement.style.display = "none";
+              window.location.replace("index.html");
+          }
+      }
+      checarAcesso();
+  </script>
+  <style>
+    /* ESTILOS MOBILE APP */
+    body { font-family: 'Segoe UI', Roboto, sans-serif; background-color: #f4f6f9; margin: 0; padding: 0; color: #333; padding-bottom: 30px; }
+    .container-mobile { padding: 15px; }
+    h2 { font-size: 22px; text-align: center; color: #2c3e50; margin: 10px 0 15px 0; }
+    
+    /* Painel Total */
+    .card-total { background: linear-gradient(135deg, #2c3e50, #34495e); color: white; padding: 20px; border-radius: 12px; text-align: center; box-shadow: 0 4px 15px rgba(0,0,0,0.15); margin-bottom: 20px; }
+    .card-total.negativo { background: linear-gradient(135deg, #c0392b, #e74c3c); }
+    .card-total span { font-size: 14px; text-transform: uppercase; letter-spacing: 1px; opacity: 0.9; }
+    .card-total h3 { margin: 5px 0 0 0; font-size: 30px; font-weight: bold; }
+    
+    /* Filtros e Botões */
+    .acoes-topo { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
+    .filtros-data { display: flex; gap: 10px; }
+    .filtros-data input { flex: 1; padding: 12px 10px; font-size: 15px; border-radius: 8px; border: 1px solid #ccc; background: white; }
+    .btn-filtrar { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background: #3498db; color: white; margin-bottom: 10px; }
+    .btn-gasto { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background: #e74c3c; color: white; }
+    .btn-voltar { width: 100%; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background: #34495e; color: white; margin-bottom: 10px; }
+    
+    /* Cards de Dias */
+    .lista-faturamento { display: flex; flex-direction: column; gap: 12px; }
+    .card-dia { background: white; border-radius: 10px; padding: 15px; box-shadow: 0 2px 8px rgba(0,0,0,0.05); border-left: 5px solid #bdc3c7; }
+    .card-dia.positivo { border-left-color: #2ecc71; }
+    .card-dia.negativo { border-left-color: #e74c3c; }
+    .dia-header { font-size: 16px; font-weight: bold; color: #2c3e50; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px; display: flex; justify-content: space-between; }
+    .linha-valor { display: flex; justify-content: space-between; font-size: 15px; margin: 5px 0; }
+    .val-entrada { color: #3498db; font-weight: bold; }
+    .val-saida { color: #e74c3c; font-weight: bold; }
+    .val-liquido { font-size: 16px; font-weight: bold; }
+    .val-liquido.pos { color: #2ecc71; }
+    .val-liquido.neg { color: #e74c3c; }
+    .btn-ver-gastos { margin-top: 10px; width: 100%; padding: 10px; background: #f1c40f; color: #333; font-weight: bold; border: none; border-radius: 6px; cursor: pointer; }
+
+    /* Modais */
+    .modal-overlay { display: none; position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); z-index: 9999; justify-content: center; align-items: center; padding: 15px; box-sizing: border-box; }
+    .modal-box { background: white; width: 100%; max-width: 400px; border-radius: 12px; padding: 20px; box-shadow: 0 10px 25px rgba(0,0,0,0.2); max-height: 90vh; overflow-y: auto; }
+    .modal-box h3 { margin-top: 0; font-size: 18px; text-align: center; border-bottom: 2px solid #eee; padding-bottom: 10px; }
+    .modal-box label { font-size: 14px; font-weight: bold; display: block; margin-top: 10px; }
+    .modal-box input, .modal-box select { width: 100%; padding: 15px; font-size: 16px; border: 1px solid #ccc; border-radius: 8px; margin-top: 5px; box-sizing: border-box; }
+    .modal-botoes { display: flex; gap: 10px; margin-top: 20px; }
+    .modal-botoes button { flex: 1; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; color: white; cursor: pointer; }
+    
+    .lista-despesas-modal { display: flex; flex-direction: column; gap: 10px; margin-top: 15px; }
+    .item-despesa { background: #fdfdfd; border: 1px solid #eee; padding: 10px; border-radius: 6px; border-left: 4px solid #e74c3c; }
+    .item-despesa-row { display: flex; justify-content: space-between; font-size: 14px; margin: 2px 0; }
+  </style>
+</head>
+<body>
+
+  <div class="container-mobile">
+    <h2>💰 Faturamento Líquido</h2>
+
+    <div class="card-total" id="caixa-total-faturamento">
+      <span>Saldo Líquido do Período</span>
+      <h3 id="span-total-liquido">R$ 0,00</h3>
+    </div>
+
+    <div class="acoes-topo">
+      <div class="filtros-data">
+        <input type="date" id="dataInicio" />
+        <input type="date" id="dataFim" />
+      </div>
+      <button class="btn-filtrar" onclick="gerarRelatorio()">🔍 Filtrar Período</button>
+      <button class="btn-gasto" onclick="abrirModalGasto()">➕ Registrar Gasto Avulso</button>
+      <button class="btn-voltar" onclick="window.location.href='sistema.html'">⬅️ Voltar ao Painel</button>
+    </div>
+
+    <div class="lista-faturamento" id="container-faturamento">
+      <p style="text-align: center; color: #7f8c8d; padding: 20px;">Carregando dados financeiros...</p>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-gasto">
+    <div class="modal-box">
+      <h3>💸 Registrar Nova Despesa</h3>
+      <label>Data:</label>
+      <input type="date" id="g-data" />
+      <label>Descrição (Com que gastou?):</label>
+      <input type="text" id="g-desc" placeholder="Ex: Conta de Luz, Pão, etc" />
+      <label>Valor (R$):</label>
+      <input type="number" id="g-val" step="0.01" placeholder="Ex: 50.00" />
+      <label>Forma de Pagamento:</label>
+      <select id="g-forma-pag">
+        <option value="Dinheiro">Dinheiro (Caixa)</option>
+        <option value="Pix">Pix / Transferência</option>
+        <option value="Debito">Cartão de Débito</option>
+        <option value="Credito">Cartão de Crédito</option>
+      </select>
+      <div class="modal-botoes">
+        <button style="background: #e74c3c;" onclick="fecharModalGasto()">Cancelar</button>
+        <button style="background: #2ecc71;" onclick="salvarGasto()">Salvar</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="modal-overlay" id="modal-detalhes-dia">
+    <div class="modal-box">
+      <h3 id="titulo-modal-despesas">Despesas do Dia</h3>
+      <div class="lista-despesas-modal" id="lista-despesas-conteudo"></div>
+      <button style="width: 100%; margin-top: 15px; padding: 15px; font-size: 16px; font-weight: bold; border: none; border-radius: 8px; background: #34495e; color: white;" onclick="fecharModalDespesas()">Fechar</button>
+    </div>
+  </div>
+
+  <script>
+    window.dadosRelatorioAtual = [];
+
+    function formatarDataISO(data) {
+        let ano = data.getFullYear();
+        let mes = String(data.getMonth() + 1).padStart(2, '0');
+        let dia = String(data.getDate()).padStart(2, '0');
+        return `${ano}-${mes}-${dia}`;
+    }
+
+    function setarDatasPadrao() {
+        let hoje = new Date();
+        let primeiroDiaMes = new Date(hoje.getFullYear(), hoje.getMonth(), 1);
+        document.getElementById("dataInicio").value = formatarDataISO(primeiroDiaMes);
+        document.getElementById("dataFim").value = formatarDataISO(hoje);
+    }
+
+    // Modal Gastos
+    function abrirModalGasto() {
+        document.getElementById('modal-gasto').style.display = 'flex';
+        document.getElementById('g-data').value = formatarDataISO(new Date());
+        document.getElementById('g-desc').value = '';
+        document.getElementById('g-val').value = '';
+        document.getElementById('g-forma-pag').value = 'Dinheiro';
+    }
+    function fecharModalGasto() { document.getElementById('modal-gasto').style.display = 'none'; }
+
+    function salvarGasto() {
+        let desc = document.getElementById('g-desc').value.trim();
+        let valor = parseFloat(document.getElementById('g-val').value);
+        let data = document.getElementById('g-data').value;
+        let formaPag = document.getElementById('g-forma-pag').value;
+
+        if (!desc || isNaN(valor) || valor <= 0 || !data) return alert("Preencha corretamente!");
+
+        let movimentacoes = window.obterDados ? (window.obterDados("movimentacoes") || {}) : {};
+        if (!movimentacoes[data]) movimentacoes[data] = [];
+
+        let horaAtual = new Date().toLocaleTimeString('pt-BR', { hour: '2-digit', minute: '2-digit' });
+
+        movimentacoes[data].push({
+            tipoMovimento: "despesa",
+            codigo: "GASTO_AVULSO",
+            produto: desc,
+            quantidade: 1,
+            valor: valor,
+            formaPagamento: formaPag,
+            hora: horaAtual,
+            usuario: localStorage.getItem("usuarioLogado") || "Admin"
+        });
+
+        if (window.salvarDados) window.salvarDados("movimentacoes", movimentacoes);
+
+        // Se foi tirado do dinheiro do caixa, atualiza o resumo
+        if (formaPag === "Dinheiro") {
+            let resumo = window.obterDados ? (window.obterDados("resumoFormas") || {}) : {};
+            resumo["Dinheiro"] = (resumo["Dinheiro"] || 0) - valor;
+            if (window.salvarDados) window.salvarDados("resumoFormas", resumo);
+        }
+
+        alert("Gasto salvo com sucesso!");
+        fecharModalGasto();
+        gerarRelatorio();
+    }
+
+    // Relatório Core
+    function gerarRelatorio() {
+        let inicioStr = document.getElementById("dataInicio").value;
+        let fimStr = document.getElementById("dataFim").value;
+        if (!inicioStr || !fimStr) return;
+
+        let movimentacoes = window.obterDados ? (window.obterDados("movimentacoes") || {}) : {};
+        let container = document.getElementById("container-faturamento");
+        let spanTotal = document.getElementById("span-total-liquido");
+        let caixaTotal = document.getElementById("caixa-total-faturamento");
+
+        let resumoDiario = {};
+        let totalLiquidoGeral = 0;
+
+        for (let dataMov in movimentacoes) {
+            if (dataMov >= inicioStr && dataMov <= fimStr) {
+                let parts = dataMov.split('-');
+                let dataAmigavel = parts.length === 3 ? `${parts[2]}/${parts[1]}/${parts[0]}` : dataMov;
+                
+                resumoDiario[dataMov] = {
+                    dataISO: dataMov,
+                    dataAmigavel: dataAmigavel,
+                    entradas: 0,
+                    saidas: 0,
+                    liquido: 0,
+                    listaDeGastos: []
+                };
+
+                movimentacoes[dataMov].forEach(mov => {
+                    let tipo = (mov.tipoMovimento || "venda").toLowerCase();
+                    if (tipo === 'cancelado' || tipo === 'cancelamento_total') return;
+
+                    let vlr = parseFloat(mov.valor) || 0;
+                    let qtd = (mov.quantidade !== undefined) ? Math.abs(mov.quantidade) : 1;
+                    let valorTotalItem = vlr * qtd;
+
+                    if (tipo === 'gasto' || tipo === 'despesa' || tipo === 'saída' || tipo === 'sangria') {
+                        resumoDiario[dataMov].saidas += valorTotalItem;
+                        resumoDiario[dataMov].listaDeGastos.push(mov);
+                    } else {
+                        resumoDiario[dataMov].entradas += valorTotalItem;
+                    }
+                });
+
+                resumoDiario[dataMov].liquido = resumoDiario[dataMov].entradas - resumoDiario[dataMov].saidas;
+            }
+        }
+
+        let diasFiltrados = Object.values(resumoDiario).sort((a, b) => new Date(b.dataISO) - new Date(a.dataISO));
+        window.dadosRelatorioAtual = diasFiltrados;
+        container.innerHTML = "";
+
+        if (diasFiltrados.length === 0) {
+            container.innerHTML = "<p style='text-align: center; color: #7f8c8d; padding: 20px;'>Nenhum faturamento no período.</p>";
+            spanTotal.innerText = "R$ 0,00";
+            caixaTotal.className = "card-total";
+            return;
+        }
+
+        diasFiltrados.forEach((dia, index) => {
+            totalLiquidoGeral += dia.liquido;
+            let status = dia.liquido >= 0 ? "pos" : "neg";
+            let borderClass = dia.liquido >= 0 ? "positivo" : "negativo";
+
+            let btnDespesas = dia.listaDeGastos.length > 0 
+                ? `<button class="btn-ver-gastos" onclick="verDespesas(${index})">🔍 Ver ${dia.listaDeGastos.length} Despesa(s)</button>`
+                : `<div style="text-align:center; color:#bdc3c7; font-size:13px; margin-top:10px;">Sem gastos no dia</div>`;
+
+            container.innerHTML += `
+                <div class="card-dia ${borderClass}">
+                    <div class="dia-header">📅 ${dia.dataAmigavel}</div>
+                    <div class="linha-valor"><span>Entradas:</span> <span class="val-entrada">+ R$ ${dia.entradas.toFixed(2).replace('.',',')}</span></div>
+                    <div class="linha-valor"><span>Saídas:</span> <span class="val-saida">- R$ ${dia.saidas.toFixed(2).replace('.',',')}</span></div>
+                    <div class="linha-valor" style="margin-top: 10px; border-top: 1px dashed #eee; padding-top: 5px;">
+                        <span>Líquido:</span> <span class="val-liquido ${status}">R$ ${dia.liquido.toFixed(2).replace('.',',')}</span>
+                    </div>
+                    ${btnDespesas}
+                </div>
+            `;
+        });
+
+        spanTotal.innerText = "R$ " + totalLiquidoGeral.toFixed(2).replace('.', ',');
+        caixaTotal.className = totalLiquidoGeral < 0 ? "card-total negativo" : "card-total";
+    }
+
+    // Modal Ver Despesas
+    function verDespesas(index) {
+        let dia = window.dadosRelatorioAtual[index];
+        if (!dia) return;
+
+        document.getElementById("titulo-modal-despesas").innerText = "Despesas: " + dia.dataAmigavel;
+        let lista = document.getElementById("lista-despesas-conteudo");
+        lista.innerHTML = "";
+
+        dia.listaDeGastos.forEach(g => {
+            let vlr = (parseFloat(g.valor) * Math.abs(g.quantidade || 1)).toFixed(2);
+            lista.innerHTML += `
+                <div class="item-despesa">
+                    <div class="item-despesa-row"><strong style="color:#2c3e50;">${g.produto}</strong> <span style="color:#e74c3c; font-weight:bold;">R$ ${vlr}</span></div>
+                    <div class="item-despesa-row" style="color:#7f8c8d;"><span>${g.formaPagamento || 'Dinheiro'}</span> <span>🕐 ${g.hora || '--:--'}</span></div>
+                </div>
+            `;
+        });
+        document.getElementById("modal-detalhes-dia").style.display = "flex";
+    }
+    function fecharModalDespesas() { document.getElementById("modal-detalhes-dia").style.display = "none"; }
+
+    // Init
+    document.addEventListener("bancoPronto", () => { setarDatasPadrao(); gerarRelatorio(); });
+    document.addEventListener("dadosAtualizados", gerarRelatorio);
+    if (window.isBancoPronto) { setarDatasPadrao(); gerarRelatorio(); }
+  </script>
+</body>
+</html>

@@ -1,0 +1,565 @@
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Fechamento Diário - Mobile</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script type="module" src="firebase-banco.js"></script>
+  <script>
+      function checarAcesso() {
+          if (!localStorage.getItem("usuarioLogado")) {
+              document.documentElement.style.display = "none";
+              window.location.replace("index.html");
+          }
+      }
+      checarAcesso();
+      window.addEventListener("pageshow", function(event) { if (event.persisted) checarAcesso(); });
+  </script>
+  <style>
+    /* =========================================
+       ESTILOS EXCLUSIVOS PARA MOBILE (APP FEEL)
+       ========================================= */
+    body {
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        padding-bottom: 30px;
+    }
+    
+    .container-mobile {
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .container-mobile h2 {
+        font-size: 22px;
+        text-align: center;
+        color: #2c3e50;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Controles do Topo (Data e Botões) */
+    .acoes-topo-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .campo-data {
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .campo-data label {
+        font-size: 14px;
+        font-weight: bold;
+        color: #7f8c8d;
+        text-transform: uppercase;
+    }
+
+    .campo-data input[type="date"] {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px; /* Evita zoom no iPhone */
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+        background: #fdfdfd;
+    }
+
+    .botoes-topo-row {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 10px;
+    }
+
+    .botoes-topo-row button {
+        flex: 1 1 45%;
+        padding: 15px 10px;
+        font-size: 14px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 5px;
+    }
+
+    /* Cartões de Resumo (KPIs) */
+    .kpi-main {
+        background: linear-gradient(135deg, #27ae60, #2ecc71);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(39, 174, 96, 0.3);
+        margin-bottom: 15px;
+    }
+
+    .kpi-main span {
+        display: block;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.9;
+    }
+
+    .kpi-main h3 {
+        margin: 5px 0 0 0;
+        font-size: 32px;
+        font-weight: bold;
+    }
+
+    .kpi-row {
+        display: flex;
+        gap: 10px;
+        margin-bottom: 25px;
+    }
+
+    .kpi-small {
+        flex: 1;
+        background: white;
+        padding: 15px;
+        border-radius: 10px;
+        text-align: center;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+        border: 1px solid #eee;
+    }
+
+    .kpi-small span {
+        display: block;
+        font-size: 12px;
+        color: #7f8c8d;
+        text-transform: uppercase;
+        margin-bottom: 5px;
+        font-weight: bold;
+    }
+
+    .kpi-small h4 {
+        margin: 0;
+        font-size: 18px;
+        color: #2c3e50;
+    }
+
+    .kpi-small.saida h4 { color: #e74c3c; }
+
+    /* Seções do Relatório (Cards Brancos) */
+    .section-card {
+        background: white;
+        border-radius: 10px;
+        padding: 20px;
+        margin-bottom: 20px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.05);
+    }
+
+    .section-card h3 {
+        margin: 0 0 15px 0;
+        font-size: 16px;
+        color: #34495e;
+        border-bottom: 1px solid #ecf0f1;
+        padding-bottom: 10px;
+    }
+
+    .section-danger {
+        background: #fffafa;
+        border: 1px solid #fadbd8;
+    }
+
+    .section-danger h3 { color: #c0392b; border-bottom-color: #fadbd8; }
+
+    /* Listas dentro dos Cards */
+    .list-item {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        padding: 12px 0;
+        border-bottom: 1px dashed #ecf0f1;
+        font-size: 15px;
+    }
+
+    .list-item:last-child { border-bottom: none; padding-bottom: 0; }
+
+    .item-left {
+        display: flex;
+        flex-direction: column;
+        flex: 1;
+    }
+
+    .item-left strong { color: #2c3e50; font-size: 15px; }
+    .item-left small { color: #7f8c8d; font-size: 12px; }
+    
+    .item-right {
+        font-weight: bold;
+        color: #27ae60;
+        font-size: 15px;
+        text-align: right;
+    }
+
+    .text-danger { color: #e74c3c !important; }
+    .text-primary { color: #2980b9 !important; }
+
+    /* Estado Vazio */
+    .msg-vazia {
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 16px;
+        padding: 40px 20px;
+        background: white;
+        border-radius: 10px;
+        border: 1px dashed #ccc;
+    }
+  </style>
+</head>
+<body>
+  <iframe id="iframe-impressao" style="display:none;"></iframe>
+
+  <div class="container-mobile">
+    <h2>📊 Fechamento Diário</h2>
+    
+    <div class="acoes-topo-mobile" id="area-controles">
+        <div class="campo-data">
+            <label>📅 Selecione a Data:</label>
+            <input type="date" id="report-date" />
+        </div>
+        
+        <div class="botoes-topo-row">
+            
+            <button onclick="window.location.href='sistema.html'" style="background-color: #34495e;">⬅️ Voltar</button>
+        </div>
+    </div>
+    
+    <div id="report-content">
+        <p class="msg-vazia">Selecione uma data para gerar o relatório.</p>
+    </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    // Armazena as métricas para a impressora térmica usar depois
+    var metricasDoDia = {};
+
+    function showReport() {
+      var inputData = document.getElementById("report-date");
+      var content = document.getElementById("report-content");
+      if (!inputData || !content) return;
+      
+      var data = inputData.value;
+      if (!data) return;
+
+      var movimentacoes = window.obterDados ? window.obterDados("movimentacoes") : {};
+      var vendas = movimentacoes[data] || [];
+      var partesData = data.split("-");
+      var dataFormatada = partesData.length === 3 ? partesData[2] + "/" + partesData[1] + "/" + partesData[0] : data;
+
+      if (vendas.length === 0) {
+          content.innerHTML = "<div class='msg-vazia'><h3>Nenhum Registro</h3><p>Nenhuma venda, despesa ou cancelamento registrados no dia " + dataFormatada + ".</p></div>";
+          metricasDoDia = null;
+          return;
+      }
+
+      // 1. Variáveis de Agrupamento
+      var totaisPagamento = {};
+      var rankingProdutos = {};
+      var totalBrutoVendas = 0;
+      var totalSangrias = 0;
+      var totalCancelado = 0;
+      
+      var htmlListaVendas = "";
+      var htmlListaSangrias = "";
+      var htmlListaCancelados = "";
+
+      // 2. Lógica de Processamento e Separação
+      vendas.forEach(function(v) {
+        var qtd = parseFloat(v.quantidade) || 0;
+        var absQtd = Math.abs(qtd);
+        var valor = parseFloat(v.valor) || 0;
+        var subtotal = absQtd * valor;
+        var tipo = v.tipoMovimento ? v.tipoMovimento.toLowerCase() : 'venda';
+        var pgto = v.formaPagamento || "Dinheiro";
+        var horaStr = v.hora || "--:--";
+
+        // Vendas Normais
+        if (tipo === "venda" || !v.tipoMovimento) {
+            totalBrutoVendas += subtotal;
+            totaisPagamento[pgto] = (totaisPagamento[pgto] || 0) + subtotal;
+            
+            // Agrupar para o Ranking
+            var cod = v.codigo || v.produto;
+            if (!rankingProdutos[cod]) {
+                rankingProdutos[cod] = { nome: v.produto, qtd: 0, total: 0 };
+            }
+            rankingProdutos[cod].qtd += absQtd;
+            rankingProdutos[cod].total += subtotal;
+
+            htmlListaVendas += `
+                <div class="list-item">
+                    <div class="item-left">
+                        <strong>${v.produto}</strong>
+                        <small>🕐 ${horaStr} • Qtd: ${absQtd}</small>
+                    </div>
+                    <div class="item-right">R$ ${subtotal.toFixed(2)}</div>
+                </div>`;
+        } 
+        // Despesas e Sangrias
+        else if (tipo === "gasto" || tipo === "despesa" || tipo === "sangria" || tipo === "saída") {
+            totalSangrias += subtotal;
+            htmlListaSangrias += `
+                <div class="list-item">
+                    <div class="item-left">
+                        <strong>${v.produto || "Saída Avulsa"}</strong>
+                        <small>🕐 ${horaStr}</small>
+                    </div>
+                    <div class="item-right text-danger">- R$ ${subtotal.toFixed(2)}</div>
+                </div>`;
+        } 
+        // Cancelamentos e Devoluções
+        else if (tipo === "cancelado" || tipo === "devolucao" || tipo === "descarte") {
+            totalCancelado += subtotal;
+            htmlListaCancelados += `
+                <div class="list-item">
+                    <div class="item-left">
+                        <strong>${v.produto}</strong>
+                        <small>🕐 ${horaStr} • ${tipo.toUpperCase()} (Qtd: ${absQtd})</small>
+                    </div>
+                    <div class="item-right text-danger">R$ ${subtotal.toFixed(2)}</div>
+                </div>`;
+        }
+      });
+
+      var totalLiquido = totalBrutoVendas - totalSangrias;
+
+      // Ordenar Top 5 Produtos
+      var rankingArray = Object.keys(rankingProdutos).map(function(k) { return rankingProdutos[k]; });
+      rankingArray.sort(function(a, b) { return b.qtd - a.qtd; }); // Ordena por quantidade vendida
+      var top5 = rankingArray.slice(0, 5);
+
+      // Salva globalmente para a impressora
+      metricasDoDia = {
+          data: dataFormatada,
+          bruto: totalBrutoVendas,
+          sangrias: totalSangrias,
+          liquido: totalLiquido,
+          cancelado: totalCancelado,
+          pagamentos: totaisPagamento,
+          top5: top5
+      };
+
+      // 3. MONTAGEM DA TELA VISUAL APP
+      
+      // 3.1 Cartões de Resumo (KPIs)
+      var html = `
+        <div id="area-relatorio-pdf">
+            <h3 style="text-align:center; color:#34495e; margin-bottom:15px; font-size: 16px;">Resumo: ${dataFormatada}</h3>
+            
+            <div class="kpi-main">
+                <span>Valor Líquido em Caixa</span>
+                <h3>R$ ${totalLiquido.toFixed(2)}</h3>
+            </div>
+            
+            <div class="kpi-row">
+                <div class="kpi-small">
+                    <span>Venda Bruta</span>
+                    <h4>R$ ${totalBrutoVendas.toFixed(2)}</h4>
+                </div>
+                <div class="kpi-small saida">
+                    <span>Despesas/Saídas</span>
+                    <h4>- R$ ${totalSangrias.toFixed(2)}</h4>
+                </div>
+            </div>
+      `;
+
+      // 3.2 Formas de Pagamento
+      html += `<div class="section-card"><h3>💳 Entradas por Pagamento</h3>`;
+      var temPgto = false;
+      Object.keys(totaisPagamento).forEach(function(f) {
+          if(totaisPagamento[f] > 0) {
+              html += `
+                <div class="list-item">
+                    <div class="item-left"><strong>${f.toUpperCase()}</strong></div>
+                    <div class="item-right">R$ ${totaisPagamento[f].toFixed(2)}</div>
+                </div>`;
+              temPgto = true;
+          }
+      });
+      if(!temPgto) html += `<p style="text-align:center; color:#7f8c8d; font-size:14px; margin:0;">Nenhuma entrada registrada.</p>`;
+      html += `</div>`;
+
+      // 3.3 Top 5 Produtos
+      html += `<div class="section-card"><h3>🏆 Top 5 Mais Vendidos</h3>`;
+      var medalhas = ["🥇", "🥈", "🥉", "4º", "5º"];
+      if(top5.length > 0) {
+          top5.forEach(function(p, i) {
+              html += `
+                <div class="list-item">
+                    <div class="item-left">
+                        <strong>${medalhas[i]} ${p.nome.substring(0, 22)}</strong>
+                        <small>Vendidos: ${p.qtd} un</small>
+                    </div>
+                    <div class="item-right text-primary">R$ ${p.total.toFixed(2)}</div>
+                </div>`;
+          });
+      } else {
+          html += `<p style="text-align:center; color:#7f8c8d; font-size:14px; margin:0;">Nenhum produto vendido.</p>`;
+      }
+      html += `</div>`;
+
+      // 3.4 Avisos de Perdas
+      if (totalCancelado > 0) {
+          html += `
+          <div class="section-card section-danger">
+              <h3>⚠️ Perdas / Cancelamentos</h3>
+              <p style="font-size:13px; color:#555; margin-top:0;">Total de <strong>R$ ${totalCancelado.toFixed(2)}</strong> em estornos.</p>
+              ${htmlListaCancelados}
+          </div>`;
+      }
+
+      // 3.5 Detalhes de Sangrias
+      if (totalSangrias > 0) {
+          html += `
+          <div class="section-card">
+              <h3>💸 Detalhamento de Saídas</h3>
+              ${htmlListaSangrias}
+          </div>`;
+      }
+
+      // 3.6 Tabela Completa de Vendas
+      if (totalBrutoVendas > 0) {
+          html += `
+          <div class="section-card">
+              <h3>🛒 Histórico de Vendas</h3>
+              ${htmlListaVendas}
+          </div>`;
+      }
+
+      html += `</div>`; // fecha #area-relatorio-pdf
+      content.innerHTML = html;
+    }
+
+    // GATILHOS INICIAIS
+    var reportDateInput = document.getElementById("report-date");
+    if (reportDateInput) reportDateInput.addEventListener("change", showReport);
+
+    function definirDataHoje() {
+      var hoje = new Date();
+      // Ajuste de fuso para não pegar o dia anterior à noite
+      var offset = hoje.getTimezoneOffset() * 60000;
+      var dataLocal = new Date(hoje.getTime() - offset);
+      var dataFormatada = dataLocal.toISOString().split("T")[0];
+      
+      if (reportDateInput && !reportDateInput.value) reportDateInput.value = dataFormatada;
+    }
+
+    document.addEventListener("bancoPronto", function() { definirDataHoje(); showReport(); });
+    document.addEventListener("dadosAtualizados", showReport);
+    if (window.isBancoPronto) { definirDataHoje(); showReport(); }
+
+    // SALVAR EM PDF
+    function salvarPDFTela() {
+        var element = document.getElementById("area-relatorio-pdf");
+        if (!element) return alert("Nenhum relatório gerado para salvar.");
+        
+        var areaControles = document.getElementById("area-controles");
+        areaControles.style.display = "none"; // Esconde os botões
+        
+        var dataRelatorio = reportDateInput ? reportDateInput.value : "sem_data";
+        var opt = { 
+            margin: [10, 10, 10, 10], 
+            filename: "Fechamento_" + dataRelatorio + ".pdf", 
+            image: { type: 'jpeg', quality: 0.98 },
+            html2canvas: { scale: 2, useCORS: true }, 
+            jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+        };
+        
+        html2pdf().set(opt).from(element).save().then(function() {
+            areaControles.style.display = "flex"; // Mostra os botões de volta
+        });
+    }
+
+    // IMPRIMIR FORMATO FECHAMENTO TÉRMICO (80mm) - MANTIDO INTACTO
+    function imprimirFechamentoTermico() {
+        if (!metricasDoDia) return alert("Selecione uma data com movimentações para imprimir.");
+
+        var iframe = document.getElementById("iframe-impressao");
+        var doc = iframe.contentDocument || iframe.contentWindow.document;
+
+        var configLoja = window.obterDados ? window.obterDados("configLoja") : null;
+        var nomeLoja = configLoja && configLoja.nome ? configLoja.nome : "Nome da Loja";
+        var cnpjLoja = configLoja && configLoja.cnpj ? configLoja.cnpj : "00.000.000/0000-00";
+        var operador = localStorage.getItem("usuarioLogado") || "Admin";
+
+        var estiloTexto = "body { font-family: 'Courier New', Courier, monospace; font-size: 12px; width: 78mm; margin: 0; padding: 10px; color: #000; } " +
+                          "h2, h3 { margin: 2px 0; text-align: center; font-size: 14px; font-weight: bold; color: #000; } " +
+                          "p { margin: 2px 0; text-align: center; font-size: 11px; color: #000; } " +
+                          ".divider { border-top: 1px dashed #000; margin: 8px 0; } " +
+                          "table { width: 100%; border-collapse: collapse; font-size: 11px; margin: 8px 0; color: #000; } " +
+                          "th { border-bottom: 1px dashed #000; padding-bottom: 3px; text-align: left; font-weight: bold; } " +
+                          "td { padding: 3px 0; vertical-align: top; } " +
+                          ".right { text-align: right; } .center { text-align: center; } .bold { font-weight: bold; } " +
+                          ".info-line { display: flex; justify-content: space-between; font-size: 11px; margin: 3px 0; }";
+
+        var html = "<style>" + estiloTexto + "</style>";
+        html += "<h2>" + nomeLoja + "</h2><p>CNPJ: " + cnpjLoja + "</p>";
+        html += "<div class='divider'></div><h3>FECHAMENTO DE CAIXA</h3><div class='divider'></div>";
+        html += "<div class='info-line'><span>Data do Movimento:</span><span>" + metricasDoDia.data + "</span></div>";
+        html += "<div class='info-line'><span>Impresso por:</span><span>" + operador + "</span></div>";
+        html += "<div class='info-line'><span>Data Emissão:</span><span>" + new Date().toLocaleString("pt-BR") + "</span></div>";
+        
+        // Entradas por Pagamento
+        html += "<div class='divider'></div><h3>ENTRADAS (VENDAS)</h3>";
+        var temPgto = false;
+        Object.keys(metricasDoDia.pagamentos).forEach(function(f) {
+            if (metricasDoDia.pagamentos[f] > 0) {
+                html += "<div class='info-line'><span>" + f.toUpperCase() + ":</span><span>R$ " + metricasDoDia.pagamentos[f].toFixed(2) + "</span></div>";
+                temPgto = true;
+            }
+        });
+        if(!temPgto) html += "<p>Sem vendas registradas.</p>";
+        html += "<div class='info-line bold'><span>TOTAL BRUTO:</span><span>R$ " + metricasDoDia.bruto.toFixed(2) + "</span></div>";
+
+        // Saídas e Cancelamentos
+        html += "<div class='divider'></div><h3>SAÍDAS E PERDAS</h3>";
+        html += "<div class='info-line text-danger'><span>DESPESAS / SANGRIAS:</span><span>- R$ " + metricasDoDia.sangrias.toFixed(2) + "</span></div>";
+        html += "<div class='info-line text-danger'><span>CANCELAMENTOS:</span><span>R$ " + metricasDoDia.cancelado.toFixed(2) + "</span></div>";
+
+        // Valor Líquido
+        html += "<div class='divider'></div>";
+        html += "<div class='info-line bold' style='font-size:14px;'><span>LÍQUIDO EM CAIXA:</span><span>R$ " + metricasDoDia.liquido.toFixed(2) + "</span></div>";
+        html += "<p style='font-size:9px;'>(Total Bruto abatendo as Sangrias/Despesas)</p>";
+
+        // Top 5 Produtos
+        if (metricasDoDia.top5.length > 0) {
+            html += "<div class='divider'></div><h3>TOP 5 MAIS VENDIDOS</h3>";
+            html += "<table><thead><tr><th>QTD</th><th>PRODUTO</th><th class='right'>TOTAL</th></tr></thead><tbody>";
+            metricasDoDia.top5.forEach(function(p) {
+                html += "<tr><td class='center'>" + p.qtd + "</td><td>" + p.nome.substring(0,18) + "</td><td class='right'>" + p.total.toFixed(2) + "</td></tr>";
+            });
+            html += "</tbody></table>";
+        }
+
+        html += "<div class='divider'></div><p>*** FIM DO RELATÓRIO ***</p>";
+
+        doc.open();
+        doc.write(html);
+        doc.close();
+
+        setTimeout(function() { iframe.contentWindow.focus(); iframe.contentWindow.print(); }, 500);
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,331 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Estoque Completo - Mobile</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/html2pdf.js/0.10.1/html2pdf.bundle.min.js"></script>
+  <script type="module" src="firebase-banco.js"></script>
+  <script>
+      function checarAcesso() {
+          if (!localStorage.getItem("usuarioLogado")) {
+              document.documentElement.style.display = "none";
+              window.location.replace("index.html");
+          }
+      }
+      checarAcesso();
+  </script>
+  <style>
+    /* =========================================
+       ESTILOS EXCLUSIVOS PARA MOBILE (APP FEEL)
+       ========================================= */
+    body {
+        font-family: 'Segoe UI', 'Roboto', sans-serif;
+        background-color: #f4f6f9;
+        margin: 0;
+        padding: 0;
+        color: #333;
+        padding-bottom: 30px;
+    }
+    
+    .container-mobile {
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .container-mobile h2 {
+        font-size: 22px;
+        text-align: center;
+        color: #2c3e50;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Painel do Valor Total do Estoque */
+    .card-total-fixo {
+        background: linear-gradient(135deg, #2c3e50, #34495e);
+        color: white;
+        padding: 20px;
+        border-radius: 12px;
+        text-align: center;
+        box-shadow: 0 4px 15px rgba(0,0,0,0.15);
+        margin-bottom: 20px;
+    }
+
+    .card-total-fixo span {
+        display: block;
+        font-size: 14px;
+        text-transform: uppercase;
+        letter-spacing: 1px;
+        opacity: 0.8;
+    }
+
+    .card-total-fixo h3 {
+        margin: 5px 0 0 0;
+        font-size: 28px;
+        font-weight: bold;
+        color: #2ecc71; /* Verde chamativo para dinheiro */
+    }
+
+    /* Barra de Busca e Botões */
+    .acoes-topo-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        margin-bottom: 20px;
+    }
+
+    .acoes-topo-mobile input {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px; /* 16px evita zoom automático no iPhone */
+        border-radius: 8px;
+        border: 1px solid #ccc;
+        box-sizing: border-box;
+    }
+
+    .botoes-topo-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .botoes-topo-row button {
+        flex: 1;
+        padding: 15px 10px;
+        font-size: 15px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+    }
+
+    /* Lista de Produtos (Cards) */
+    .lista-produtos-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 15px;
+    }
+
+    .card-produto {
+        background: white;
+        border-left: 5px solid #3498db;
+        border-radius: 10px;
+        padding: 18px;
+        box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        display: flex;
+        flex-direction: column;
+        gap: 8px;
+    }
+
+    .card-produto.baixo-estoque {
+        border-left-color: #e74c3c; /* Fica vermelho se tiver acabando */
+        background-color: #fffafa;
+    }
+
+    .prod-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: flex-start;
+        border-bottom: 1px solid #eee;
+        padding-bottom: 8px;
+        margin-bottom: 4px;
+    }
+
+    .prod-nome {
+        font-size: 18px;
+        font-weight: bold;
+        color: #2c3e50;
+        margin: 0;
+        word-wrap: break-word;
+        flex: 1;
+    }
+
+    .prod-codigo {
+        font-size: 12px;
+        color: #7f8c8d;
+        background: #f1f2f6;
+        padding: 4px 8px;
+        border-radius: 4px;
+        margin-left: 10px;
+        white-space: nowrap;
+    }
+
+    .prod-info-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        font-size: 15px;
+    }
+
+    .prod-info-row span.label {
+        color: #7f8c8d;
+        font-size: 14px;
+    }
+
+    .prod-info-row span.valor {
+        font-weight: bold;
+        color: #333;
+    }
+
+    .destaque-total {
+        color: #27ae60 !important;
+        font-size: 16px !important;
+    }
+
+    .msg-vazia {
+        text-align: center;
+        color: #7f8c8d;
+        font-size: 16px;
+        padding: 30px 10px;
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container-mobile" id="area-impressao">
+    <h2>📦 Todos os Produtos</h2>
+
+    <div class="card-total-fixo">
+        <span>Valor Total do Estoque</span>
+        <h3 id="total-estoque-geral">R$ 0,00</h3>
+    </div>
+    
+    <div class="acoes-topo-mobile" id="area-botoes">
+      <input type="text" id="filtroTodosInput" placeholder="🔍 Filtrar por nome ou código..." />
+      
+      <div class="botoes-topo-row">
+        
+        <button onclick="window.location.href='sistema.html'" style="background-color: #34495e;">⬅️ Voltar</button>
+      </div>
+    </div>
+    
+    <div class="lista-produtos-mobile" id="container-lista-produtos">
+        <p class="msg-vazia">Carregando catálogo de produtos...</p>
+    </div>
+
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    // 1. Função que desenha os Cards
+    function atualizarListaProdutos() {
+      var produtos = window.obterDados ? window.obterDados("produtos") : {};
+      if (!produtos) return;
+
+      var filtroInput = document.getElementById("filtroTodosInput");
+      var container = document.getElementById("container-lista-produtos");
+      var totalElement = document.getElementById("total-estoque-geral");
+
+      var filtro = filtroInput.value.toLowerCase().trim();
+      var total = 0;
+
+      // Filtra os produtos
+      var chaves = Object.keys(produtos);
+      var filtrados = [];
+      for (var i = 0; i < chaves.length; i++) {
+          var codigo = chaves[i];
+          var p = produtos[codigo];
+          if (codigo.toLowerCase().includes(filtro) || p.nome.toLowerCase().includes(filtro)) {
+              filtrados.push({ codigo: codigo, p: p });
+          }
+      }
+
+      container.innerHTML = "";
+      
+      if (filtrados.length === 0) {
+        container.innerHTML = "<p class='msg-vazia'>Nenhum produto encontrado na busca.</p>";
+        totalElement.innerText = "R$ 0,00";
+        return;
+      }
+
+      // Ordena alfabeticamente pelo nome para organizar a lista
+      filtrados.sort((a, b) => a.p.nome.localeCompare(b.p.nome));
+
+      // Preenche a tela com os Cards
+      filtrados.forEach(function(item) {
+        var codigo = item.codigo;
+        var p = item.p;
+        var valorTotal = p.quantidade * p.valor;
+        total += valorTotal;
+        
+        var isBaixoEstoque = p.quantidade <= 5 ? "baixo-estoque" : "";
+
+        var div = document.createElement("div");
+        div.className = "card-produto " + isBaixoEstoque;
+        
+        div.innerHTML = `
+            <div class="prod-header">
+                <h3 class="prod-nome">${p.nome}</h3>
+                <span class="prod-codigo">Cód: ${codigo}</span>
+            </div>
+            <div class="prod-info-row">
+                <span class="label">Qtd. em Estoque:</span>
+                <span class="valor" style="${p.quantidade <= 5 ? 'color: #c0392b;' : ''}">${p.quantidade} un</span>
+            </div>
+            <div class="prod-info-row">
+                <span class="label">Valor Unitário:</span>
+                <span class="valor">R$ ${p.valor.toFixed(2)}</span>
+            </div>
+            <div class="prod-info-row" style="margin-top: 5px; border-top: 1px dashed #eee; padding-top: 5px;">
+                <span class="label">Total em Dinheiro:</span>
+                <span class="valor destaque-total">R$ ${valorTotal.toFixed(2)}</span>
+            </div>
+        `;
+        container.appendChild(div);
+      });
+      
+      // Atualiza o painel verde lá em cima
+      totalElement.innerText = "R$ " + total.toFixed(2);
+    }
+
+    // ==========================================
+    // 2. GATILHOS DE ATUALIZAÇÃO
+    // ==========================================
+    document.addEventListener("dadosAtualizados", atualizarListaProdutos);
+    document.addEventListener("bancoPronto", atualizarListaProdutos);
+    
+    var inputFiltro = document.getElementById("filtroTodosInput");
+    if (inputFiltro) {
+        inputFiltro.addEventListener("input", atualizarListaProdutos);
+    }
+
+    if (window.isBancoPronto) {
+        atualizarListaProdutos();
+    }
+
+    // ==========================================
+    // 3. FUNÇÃO DE SALVAR PDF ADAPTADA PARA CARDS
+    // ==========================================
+    var btnPdf = document.getElementById("btnSalvarPDF");
+    if (btnPdf) {
+      btnPdf.addEventListener("click", function() {
+        var element = document.getElementById("area-impressao");
+        var areaBotoes = document.getElementById("area-botoes");
+        
+        // Esconde os botões e a busca temporariamente para não sair no PDF
+        areaBotoes.style.display = "none";
+        
+        var dataLocal = new Date(Date.now() - new Date().getTimezoneOffset() * 60000);
+        var dataFormatada = dataLocal.toISOString().split("T")[0];
+
+        var opt = {
+          margin: [10, 10, 10, 10], // Margens do PDF
+          filename: "estoque_completo_" + dataFormatada + ".pdf",
+          image: { type: 'jpeg', quality: 0.98 },
+          html2canvas: { scale: 2, useCORS: true },
+          jsPDF: { unit: "mm", format: "a4", orientation: "portrait" }
+        };
+        
+        html2pdf().set(opt).from(element).save().then(function() {
+            // Mostra os botões de volta após gerar o PDF
+            areaBotoes.style.display = "flex";
+        });
+      });
+    }
+  </script>
+</body>
+</html>

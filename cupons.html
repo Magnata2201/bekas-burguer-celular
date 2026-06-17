@@ -1,0 +1,614 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>Gerenciar Cupons - Mobile</title>
+  <link rel="icon" href="icon.ico" type="image/x-icon">
+  <link rel="stylesheet" href="style.css" /> 
+  <script type="module" src="firebase-banco.js"></script>
+  <script>
+      function checarAcesso() {
+          if (!localStorage.getItem("usuarioLogado")) {
+              document.documentElement.style.display = "none";
+              window.location.replace("index.html");
+          }
+      }
+      checarAcesso();
+  </script>
+  <style>
+    /* ESTILOS EXCLUSIVOS PARA MOBILE */
+    body {
+        background-color: #f4f6f9;
+        padding-bottom: 20px;
+    }
+    
+    .container-mobile {
+        width: 100%;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .container-mobile h2 {
+        font-size: 22px;
+        text-align: center;
+        color: #2c3e50;
+        margin-top: 10px;
+        margin-bottom: 15px;
+    }
+
+    /* Barra de Busca e Botões */
+    .acoes-topo-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 10px;
+        margin-bottom: 20px;
+    }
+
+    .acoes-topo-mobile input {
+        width: 100%;
+        padding: 15px;
+        font-size: 16px; /* Evita zoom no iPhone */
+        border-radius: 8px;
+        border: 1px solid #ccc;
+    }
+
+    .botoes-topo-row {
+        display: flex;
+        gap: 10px;
+    }
+
+    .botoes-topo-row button {
+        flex: 1;
+        padding: 15px 10px;
+        font-size: 15px;
+        font-weight: bold;
+        border: none;
+        border-radius: 8px;
+        color: white;
+        cursor: pointer;
+    }
+
+    /* Lista de Cupons */
+    .lista-cupons-mobile {
+        display: flex;
+        flex-direction: column;
+        gap: 12px;
+        padding-bottom: 30px;
+    }
+
+    .card-cupom {
+        background: white;
+        border-left: 5px solid #007bff;
+        border-radius: 8px;
+        padding: 15px;
+        box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+        position: relative;
+    }
+
+    .card-cupom:active {
+        background-color: #f8f9fa;
+        transform: scale(0.98);
+    }
+
+    .card-cupom.cancelado {
+        border-left-color: #c0392b;
+        background-color: #fff5f5;
+    }
+
+    .card-cupom h4 {
+        margin: 0 0 8px 0;
+        color: #2c3e50;
+        font-size: 18px;
+    }
+
+    .card-cupom.cancelado h4 {
+        color: #c0392b;
+    }
+
+    .card-cupom p {
+        margin: 5px 0;
+        font-size: 15px;
+        color: #555;
+    }
+
+    /* Modal do Cupom Térmico */
+    #modal-visualizar-cupom {
+        display: none;
+        position: fixed;
+        top: 0; left: 0; width: 100%; height: 100%;
+        background: rgba(0,0,0,0.8);
+        z-index: 9999;
+        align-items: center;
+        justify-content: center;
+        padding: 15px;
+        box-sizing: border-box;
+    }
+
+    .modal-cupom-content {
+        background: transparent; /* O fundo branco será o próprio cupom */
+        width: 100%;
+        max-width: 360px;
+        max-height: 90vh;
+        overflow-y: auto;
+        position: relative;
+    }
+
+    /* Botão fechar modal */
+    .fechar-modal-x {
+        position: absolute;
+        top: -10px;
+        right: 0px;
+        background: #333;
+        color: white;
+        border-radius: 50%;
+        width: 35px;
+        height: 35px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        font-size: 20px;
+        font-weight: bold;
+        cursor: pointer;
+        z-index: 10;
+        box-shadow: 0 2px 5px rgba(0,0,0,0.5);
+    }
+
+    /* Simulador de papel térmico na tela (Tamanho ajustado para Celular) */
+    .cupom-termico-simulador {
+      background: #ffffe0; /* Corzinha levemente amarelada de nota */
+      padding: 20px;
+      font-family: 'Courier New', Courier, monospace;
+      font-size: 13px;
+      color: #000;
+      width: 100%;
+      box-sizing: border-box;
+      box-shadow: 0 10px 25px rgba(0,0,0,0.3);
+    }
+    .cupom-termico-simulador h2 { margin: 2px 0; text-align: center; font-size: 16px; font-weight: bold; }
+    .cupom-termico-simulador p { margin: 2px 0; text-align: center; font-size: 12px; }
+    .cupom-termico-simulador .divider { border-top: 1px dashed #000; margin: 10px 0; }
+    .cupom-termico-simulador table { width: 100%; border-collapse: collapse; font-size: 12px; margin: 10px 0; }
+    .cupom-termico-simulador th { border-bottom: 1px dashed #000; padding-bottom: 5px; text-align: left; }
+    .cupom-termico-simulador td { padding: 5px 0; vertical-align: top; }
+    .cupom-termico-simulador .right { text-align: right; } 
+    .cupom-termico-simulador .center { text-align: center; } 
+    .cupom-termico-simulador .bold { font-weight: bold; }
+    .cupom-termico-simulador .info-line { display: flex; justify-content: space-between; margin: 4px 0; }
+
+    /* Botão de Cancelar gigante no fim do Modal */
+    .btn-cancelar-gigante {
+        width: 100%;
+        padding: 18px;
+        background-color: #c0392b;
+        color: white;
+        font-size: 18px;
+        font-weight: bold;
+        border: none;
+        margin-top: 15px;
+        box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+        border-radius: 0 0 10px 10px; /* Arredonda as pontas inferiores parecendo rasgado */
+    }
+  </style>
+</head>
+<body>
+
+  <div class="container-mobile">
+    <h2>📱 Cupons Emitidos</h2>
+    
+    <div class="acoes-topo-mobile">
+      <input type="text" id="inputBuscarCupom" placeholder="Pesquisar ID do Cupom..." />
+      <div class="botoes-topo-row">
+        <button onclick="filtrarCupons()" style="background-color: #007bff;">🔍 Buscar</button>
+        <button onclick="limparBuscaCupom()" style="background-color: #6c757d;">🧹 Limpar</button>
+      </div>
+      <button onclick="window.location.href='sistema.html'" style="background-color: #34495e; width: 100%; padding: 15px; border:none; border-radius:8px; color:white; font-size:16px; font-weight:bold;">⬅️ Voltar ao Painel</button>
+    </div>
+    
+    <div class="lista-cupons-mobile" id="container-lista-cupons">
+        <p style="text-align: center; color: #777; margin-top: 30px;">Carregando cupons da nuvem...</p>
+    </div>
+  </div>
+
+  <div id="modal-visualizar-cupom">
+      <div class="modal-cupom-content">
+          <div class="fechar-modal-x" onclick="fecharModalCupom()">X</div>
+          
+          <div id="resultado-cupom-content"></div>
+      </div>
+  </div>
+
+  <script src="script.js"></script>
+  <script>
+    var todosCuponsAgrupados = [];
+    var cupomSelecionadoAtual = null;
+
+    function carregarEAgruparCupons() {
+      if (typeof window.obterDados !== "function") return;
+
+      var movimentacoes = window.obterDados("movimentacoes") || {};
+      var mapaCupons = {};
+      var datas = Object.keys(movimentacoes);
+      
+      for (var d = 0; d < datas.length; d++) {
+          var dia = datas[d];
+          var listaVendas = movimentacoes[dia] || [];
+          
+          for (var i = 0; i < listaVendas.length; i++) {
+              var venda = listaVendas[i];
+              if (venda.idCupom) {
+                  var id = venda.idCupom;
+                  if (!mapaCupons[id]) {
+                      mapaCupons[id] = {
+                          idCupom: id,
+                          data: dia,
+                          hora: venda.hora || "--:--",
+                          operador: venda.usuario || "Desconhecido",
+                          formaPagamento: venda.formaPagamento || "Dinheiro",
+                          status: venda.tipoMovimento || "venda",
+                          itens: [],
+                          total: 0
+                      };
+                  }
+                  mapaCupons[id].itens.push(venda);
+                  if (venda.tipoMovimento !== "cancelado") {
+                      mapaCupons[id].total += (parseFloat(venda.quantidade) || 0) * (parseFloat(venda.valor) || 0);
+                  }
+              }
+          }
+      }
+
+      var listaArray = Object.keys(mapaCupons).map(function(chave) { return mapaCupons[chave]; });
+      listaArray.sort(function(a, b) { return b.idCupom.localeCompare(a.idCupom); });
+
+      todosCuponsAgrupados = listaArray.slice(0, 100);
+      renderizarListaCupons(todosCuponsAgrupados);
+
+      // Se um cupom já estiver aberto no modal e sofrer alteração (ex: cancelado), atualiza ele
+      if (cupomSelecionadoAtual) {
+          var atualizado = todosCuponsAgrupados.find(function(c) { return c.idCupom === cupomSelecionadoAtual.idCupom; });
+          if (atualizado) montarModalCupom(atualizado);
+      }
+    }
+
+  function renderizarListaCupons(lista) {
+      var container = document.getElementById("container-lista-cupons");
+      if (!container) return;
+      container.innerHTML = "";
+
+      if (lista.length === 0) {
+          container.innerHTML = "<p style='text-align: center; color: #777; margin-top: 30px;'>Nenhum cupom encontrado.</p>";
+          return;
+      }
+
+      lista.forEach(function(cupom) {
+          var partesData = cupom.data.split("-");
+          var dataBR = partesData.length === 3 ? partesData[2] + "/" + partesData[1] + "/" + partesData[0] : cupom.data;
+          var idCurto = cupom.idCupom.split("-")[1] || cupom.idCupom;
+          var isCancelado = cupom.status === "cancelado";
+
+          // Formata o número do pedido puxado do banco (ex: 01, 02)
+          var numPedido = cupom.numeroPedido || 0;
+          var numPedidoFormatado = numPedido < 10 ? "0" + numPedido : numPedido;
+
+          var div = document.createElement("div");
+          div.className = "card-cupom" + (isCancelado ? " cancelado" : "");
+          
+          var txtStatus = isCancelado ? " <span style='color:#c0392b;'>[CANCELADO]</span>" : "";
+          var exibirTotal = isCancelado ? "R$ 0,00 (Estornado)" : "R$ " + cupom.total.toFixed(2);
+
+          // Aqui está o HTML atualizado do card com o Número do Pedido destacado
+          div.innerHTML = "<div style='display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid #eee; padding-bottom: 8px; margin-bottom: 8px;'>" +
+                          "  <span style='font-size: 15px; font-weight: bold; background: #e2e8f0; color: #1e293b; padding: 4px 8px; border-radius: 4px;'>PEDIDO " + numPedidoFormatado + "</span>" +
+                          "  <span style='font-size: 14px; color: #555;'>🎟️ N° " + idCurto + txtStatus + "</span>" +
+                          "</div>" +
+                          "<p><strong>Data:</strong> " + dataBR + " às " + cupom.hora + "</p>" +
+                          "<p><strong>Valor:</strong> " + exibirTotal + " (" + cupom.formaPagamento + ")</p>" +
+                          "<p><strong>Op:</strong> " + cupom.operador + "</p>";
+          
+          // Abre o Modal ao clicar no card
+          div.onclick = function() { montarModalCupom(cupom); };
+          container.appendChild(div);
+      });
+    }
+    function filtrarCupons() {
+        var textoFiltro = document.getElementById("inputBuscarCupom").value.trim().toUpperCase();
+        if (!textoFiltro) {
+            renderizarListaCupons(todosCuponsAgrupados);
+            return;
+        }
+        var filtrados = todosCuponsAgrupados.filter(function(cupom) {
+            return cupom.idCupom.toUpperCase().includes(textoFiltro);
+        });
+        renderizarListaCupons(filtrados);
+    }
+
+    function limparBuscaCupom() {
+        document.getElementById("inputBuscarCupom").value = "";
+        renderizarListaCupons(todosCuponsAgrupados);
+    }
+
+    // MONTA O CUPOM DENTRO DO MODAL
+    // MONTA O CUPOM DENTRO DO MODAL (IDÊNTICO AO CAIXA COM NÚMERO DO PEDIDO)
+    function montarModalCupom(cupom) {
+      cupomSelecionadoAtual = cupom;
+      var content = document.getElementById("resultado-cupom-content");
+      
+      var configLoja = window.obterDados ? window.obterDados("configLoja") : null;
+      var nomeLoja = configLoja && configLoja.nome ? configLoja.nome : "Nome da Loja";
+      var cnpjLoja = configLoja && configLoja.cnpj ? configLoja.cnpj : "00.000.000/0000-00";
+
+      var partesData = cupom.data.split("-");
+      var dataBR = partesData.length === 3 ? partesData[2] + "/" + partesData[1] + "/" + partesData[0] : cupom.data;
+      var idCurto = cupom.idCupom ? cupom.idCupom.split('-')[1] : "000000";
+      var isCancelado = cupom.status === "cancelado";
+
+      // Descobre o número sequencial do pedido do 1 ao infinito (baseado na ordem da lista)
+      var indexCupom = todosCuponsAgrupados.indexOf(cupom);
+      var numeroPedido = indexCupom !== -1 ? (todosCuponsAgrupados.length - indexCupom) : 1;
+
+      var html = "<div class='cupom-termico-simulador' style='border-radius: 10px 10px 0 0;'>";
+      // NÚMERO DO PEDIDO SEQUENCIAL NO TOPO
+      html += "<div style='display: flex; justify-content: space-between; align-items: center; margin-bottom: 5px;'><span class='bold' style='font-size: 14px;'>PEDIDO Nº ${numeroPedido}</span></div>";
+      html += "<h2>" + nomeLoja + "</h2>";
+      html += "<p>CNPJ: " + cnpjLoja + "</p>";
+      html += "<p>IE: ISENTO</p>";
+      html += "<div class='divider'></div>";
+
+      if (isCancelado) {
+          html += "<p class='bold' style='font-size: 14px; color: #c0392b; text-align: center;'>*** CUPOM CANCELADO ***</p>";
+      } else {
+          html += "<p class='bold' style='font-size: 13px; text-align: center;'>CUPOM NÃO FISCAL</p>";
+      }
+
+      html += "<div class='divider'></div>";
+      html += "<div class='info-line'><span>Data: " + dataBR + " - " + cupom.hora + "</span></div>";
+      html += "<div class='info-line'><span>Operador: " + cupom.operador + "</span><span>Cupom: " + idCurto + "</span></div>";
+      html += "<div class='divider'></div>";
+      
+      html += "<table><thead><tr><th>QTD</th><th>DESCRIÇÃO</th><th class='right'>TOTAL</th></tr></thead><tbody>";
+
+      var totalGeralReal = 0;
+      cupom.itens.forEach(function(item) {
+          var subtotal = (parseFloat(item.quantidade) || 0) * (parseFloat(item.valor) || 0);
+          totalGeralReal += subtotal;
+          html += "<tr>" +
+                  "<td class='center'>" + item.quantidade + "</td>" +
+                  "<td>" + (item.produto ? item.produto.substring(0, 15) : "Item") + "</td>" +
+                  "<td class='right'>" + subtotal.toFixed(2) + "</td>" +
+                  "</tr>";
+      });
+
+      html += "</tbody></table>";
+      html += "<div class='divider'></div>";
+      
+      if (isCancelado) {
+          html += "<div class='info-line bold' style='font-size: 14px; color: #777; text-decoration: line-through;'><span>TOTAL A PAGAR:</span><span>R$ " + totalGeralReal.toFixed(2) + "</span></div>";
+          html += "<div class='info-line bold' style='font-size: 14px; color: #c0392b; margin-top: 5px;'><span>VALOR ESTORNADO:</span><span>R$ " + totalGeralReal.toFixed(2) + "</span></div>";
+      } else {
+          html += "<div class='info-line bold' style='font-size: 14px;'><span>TOTAL A PAGAR:</span><span>R$ " + cupom.total.toFixed(2) + "</span></div>";
+      }
+      
+      html += "<div class='divider'></div>";
+      html += "<div class='info-line'><span>FORMA PAGAMENTO:</span><span>" + cupom.formaPagamento.toUpperCase() + "</span></div>";
+      html += "<div class='divider'></div><p style='margin-top: 10px; font-weight: bold; text-align: center;'>Obrigado pela preferência!</p><p style='text-align: center;'>Volte Sempre!</p>";
+      html += "</div>";
+
+      // APENAS BOTÃO DE CANCELAR
+      if (!isCancelado) {
+          html += "<button class='btn-cancelar-gigante' onclick='cancelarCupomCentral()'>❌ CANCELAR CUPOM</button>";
+      } else {
+          html += "<div style='background:#c0392b; color:white; text-align:center; padding:15px; border-radius: 0 0 10px 10px; font-weight:bold;'>ESTE CUPOM JÁ FOI CANCELADO</div>"
+      }
+
+      content.innerHTML = html;
+      document.getElementById("modal-visualizar-cupom").style.display = "flex";
+    }
+
+    function fecharModalCupom() {
+        document.getElementById("modal-visualizar-cupom").style.display = "none";
+        cupomSelecionadoAtual = null;
+    }
+
+    function cancelarCupomCentral() {
+        if (!cupomSelecionadoAtual) return;
+        
+        var senhaAdmin = prompt("🔐 Senha de Administrador para CANCELAR este cupom:");
+        if (senhaAdmin !== "1996") {
+            alert("Senha incorreta! Operação cancelada.");
+            return;
+        }
+
+        var devolverEstoque = confirm("📦 DEVOLVER AO ESTOQUE?\n\n[OK] = Devolver itens para a prateleira.\n[CANCELAR] = Apenas estornar valor.");
+
+        var movimentacoes = window.obterDados("movimentacoes") || {};
+        var produtosDoEstoque = window.obterDados("produtos") || {};
+        var resumoFormas = window.obterDados("resumoFormas") || { Pix:0, Crédito:0, Débito:0, Dinheiro:0, Cheque:0, VR:0, Misto:0 };
+
+        var dataVenda = cupomSelecionadoAtual.data;
+        var idVenda = cupomSelecionadoAtual.idCupom;
+
+        if (movimentacoes[dataVenda]) {
+            for (var i = 0; i < movimentacoes[dataVenda].length; i++) {
+                if (movimentacoes[dataVenda][i].idCupom === idVenda) {
+                    movimentacoes[dataVenda][i].tipoMovimento = "cancelado";
+                    
+                    if (devolverEstoque) {
+                        var codProd = movimentacoes[dataVenda][i].codigo;
+                        var qtdVendida = parseInt(movimentacoes[dataVenda][i].quantidade) || 0;
+                        
+                        if (produtosDoEstoque[codProd]) {
+                            produtosDoEstoque[codProd].quantidade += qtdVendida;
+                        }
+                    }
+                }
+            }
+
+            var forma = cupomSelecionadoAtual.formaPagamento;
+            if (resumoFormas[forma] !== undefined) {
+                resumoFormas[forma] = Math.max(0, resumoFormas[forma] - cupomSelecionadoAtual.total);
+            }
+
+            window.salvarDados("movimentacoes", movimentacoes);
+            window.salvarDados("resumoFormas", resumoFormas);
+            if (devolverEstoque) {
+                window.salvarDados("produtos", produtosDoEstoque);
+            }
+
+            alert("✅ Cupom cancelado com sucesso!");
+            fecharModalCupom();
+            carregarEAgruparCupons(); // Recarrega a lista para mostrar que foi cancelado
+        }
+    }
+
+    // Eventos Iniciais
+    document.addEventListener("dadosAtualizados", carregarEAgruparCupons);
+    document.addEventListener("bancoPronto", carregarEAgruparCupons);
+
+    var inputBusca = document.getElementById("inputBuscarCupom");
+    if(inputBusca) {
+        inputBusca.addEventListener("keypress", function(e) {
+            if(e.key === "Enter") { filtrarCupons(); }
+        });
+    }
+
+    if (window.isBancoPronto) {
+        carregarEAgruparCupons();
+    }
+
+    function carregarEAgruparCupons() {
+      if (typeof window.obterDados !== "function") return;
+
+      var movimentacoes = window.obterDados("movimentacoes") || {};
+      var mapaCupons = {};
+      var datas = Object.keys(movimentacoes);
+      
+      for (var d = 0; d < datas.length; d++) {
+          var dia = datas[d];
+          var listaVendas = movimentacoes[dia] || [];
+          
+          for (var i = 0; i < listaVendas.length; i++) {
+              var venda = listaVendas[i];
+              if (venda.idCupom) {
+                  var id = venda.idCupom;
+                  if (!mapaCupons[id]) {
+                      mapaCupons[id] = {
+                          idCupom: id,
+                          data: dia,
+                          hora: venda.hora || "--:--",
+                          operador: venda.usuario || "Desconhecido",
+                          formaPagamento: venda.formaPagamento || "Dinheiro",
+                          status: venda.tipoMovimento || "venda",
+                          numeroPedido: venda.numeroPedido || 0, // <- Puxa o número do pedido salvo
+                          itens: [],
+                          total: 0
+                      };
+                  }
+                  mapaCupons[id].itens.push(venda);
+                  if (venda.tipoMovimento !== "cancelado") {
+                      mapaCupons[id].total += (parseFloat(venda.quantidade) || 0) * (parseFloat(venda.valor) || 0);
+                  }
+              }
+          }
+      }
+
+      var listaArray = Object.keys(mapaCupons).map(function(chave) { return mapaCupons[chave]; });
+      listaArray.sort(function(a, b) { return b.idCupom.localeCompare(a.idCupom); });
+
+      todosCuponsAgrupados = listaArray.slice(0, 100);
+      renderizarListaCupons(todosCuponsAgrupados);
+
+      if (cupomSelecionadoAtual) {
+          var atualizado = todosCuponsAgrupados.find(function(c) { return c.idCupom === cupomSelecionadoAtual.idCupom; });
+          if (atualizado) montarModalCupom(atualizado);
+      }
+    }
+
+    // MONTA O CUPOM DENTRO DO MODAL IDÊNTICO AO CAIXA
+    function montarModalCupom(cupom) {
+      cupomSelecionadoAtual = cupom;
+      var content = document.getElementById("resultado-cupom-content");
+      
+      var configLoja = window.obterDados ? window.obterDados("configLoja") : null;
+      var nomeLoja = configLoja && configLoja.nome ? configLoja.nome : "Nome da Loja";
+      var cnpjLoja = configLoja && configLoja.cnpj ? configLoja.cnpj : "00.000.000/0000-00";
+
+      var partesData = cupom.data.split("-");
+      var dataBR = partesData.length === 3 ? partesData[2] + "/" + partesData[1] + "/" + partesData[0] : cupom.data;
+      var idCurto = cupom.idCupom ? cupom.idCupom.split('-')[1] : "000000";
+      var isCancelado = cupom.status === "cancelado";
+
+      var numPedido = cupom.numeroPedido || 0;
+      var numPedidoFormatado = numPedido < 10 ? "0" + numPedido : numPedido;
+
+      // Início do layout (Simulador Térmico)
+      var html = "<div style='font-family: \"Courier New\", Courier, monospace; font-size: 15px; color: #000; background: #fff; padding: 15px 10px; border-radius: 10px 10px 0 0; text-align: left; box-shadow: 0 10px 25px rgba(0,0,0,0.3);'>";
+      
+      // CABEÇALHO COM A CAIXA DO PEDIDO IDÊNTICA AO CAIXA
+      html += "<div style='display: block; min-height: 55px; position: relative; margin-bottom: 5px;'>";
+      html += "<div style='width: 170px; text-align: left;'>";
+      html += "<h2 style='margin: 0; font-size: 16px; font-weight: bold; text-transform: uppercase; line-height: 1.2;'>" + nomeLoja + "</h2>";
+      html += "<p style='margin: 2px 0 0 0; font-size: 11px;'>CNPJ: " + cnpjLoja + "</p>";
+      html += "<p style='margin: 2px 0 0 0; font-size: 11px;'>IE: ISENTO</p>";
+      html += "</div>";
+      html += "<div style='position: absolute; top: 0; right: 0; border: 2px solid #000; padding: 4px 8px; text-align: center; background: #fff; min-width: 65px;'>";
+      html += "<span style='font-size: 9px; font-weight: bold; text-transform: uppercase; display: block; margin-bottom: -2px;'>PEDIDO</span>";
+      html += "<span style='font-size: 26px; font-weight: bold; display: block; line-height: 1.1;'>" + numPedidoFormatado + "</span>";
+      html += "</div></div>";
+
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+
+      if (isCancelado) {
+          html += "<p style='font-weight: bold; font-size: 14px; color: #c0392b; text-align: center; margin: 2px 0;'>*** CUPOM CANCELADO ***</p>";
+      } else {
+          html += "<p style='font-weight: bold; font-size: 13px; text-align: center; margin: 2px 0;'>CUPOM NÃO FISCAL</p>";
+      }
+
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+      html += "<div style='display: flex; justify-content: space-between; font-size: 13px; margin: 2px 0;'><span>Data: " + dataBR + " - " + cupom.hora + "</span></div>";
+      html += "<div style='display: flex; justify-content: space-between; font-size: 13px; margin: 2px 0;'><span>Operador: " + cupom.operador + "</span><span>Cupom: " + idCurto + "</span></div>";
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+      
+      html += "<table style='width: 100%; border-collapse: collapse; font-size: 13px; margin: 5px 0;'><thead><tr><th style='border-bottom: 1px dashed #000; padding-bottom: 3px; text-align: left;'>QTD</th><th style='border-bottom: 1px dashed #000; padding-bottom: 3px; text-align: left;'>DESCRIÇÃO</th><th style='border-bottom: 1px dashed #000; padding-bottom: 3px; text-align: right;'>TOTAL</th></tr></thead><tbody>";
+
+      var totalGeralReal = 0;
+      cupom.itens.forEach(function(item) {
+          var subtotal = (parseFloat(item.quantidade) || 0) * (parseFloat(item.valor) || 0);
+          totalGeralReal += subtotal;
+          html += "<tr>" +
+                  "<td style='padding: 3px 0; text-align: center;'>" + item.quantidade + "</td>" +
+                  "<td style='padding: 3px 0; word-wrap: break-word;'>" + (item.produto ? item.produto.substring(0, 18) : "Item") + "</td>" +
+                  "<td style='padding: 3px 0; text-align: right;'>" + subtotal.toFixed(2) + "</td>" +
+                  "</tr>";
+      });
+
+      html += "</tbody></table>";
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+      
+      if (isCancelado) {
+          html += "<div style='display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; color: #777; text-decoration: line-through;'><span>TOTAL A PAGAR:</span><span>R$ " + totalGeralReal.toFixed(2) + "</span></div>";
+          html += "<div style='display: flex; justify-content: space-between; font-size: 15px; font-weight: bold; color: #c0392b; margin-top: 5px;'><span>VALOR ESTORNADO:</span><span>R$ " + totalGeralReal.toFixed(2) + "</span></div>";
+      } else {
+          html += "<div style='display: flex; justify-content: space-between; font-size: 15px; font-weight: bold;'><span>TOTAL A PAGAR:</span><span>R$ " + cupom.total.toFixed(2) + "</span></div>";
+      }
+      
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+      html += "<div style='display: flex; justify-content: space-between; font-size: 13px; margin: 2px 0;'><span>FORMA PAGAMENTO:</span><span>" + cupom.formaPagamento.toUpperCase() + "</span></div>";
+      html += "<div style='border-top: 1px dashed #000; margin: 5px 0;'></div>";
+      html += "<p style='margin-top: 10px; font-weight: bold; text-align: center; font-size: 13px;'>Obrigado pela preferência!</p><p style='text-align: center; font-size: 13px;'>Volte Sempre!</p>";
+      html += "</div>";
+
+      // APENAS BOTÃO DE CANCELAR FORA DO PAPEL (Na parte inferior)
+      if (!isCancelado) {
+          html += "<button class='btn-cancelar-gigante' onclick='cancelarCupomCentral()' style='width: 100%; padding: 18px; background-color: #c0392b; color: white; font-size: 18px; font-weight: bold; border: none; box-shadow: 0 4px 6px rgba(0,0,0,0.3); border-radius: 0 0 10px 10px;'>❌ CANCELAR CUPOM</button>";
+      } else {
+          html += "<div style='background:#c0392b; color:white; text-align:center; padding:15px; border-radius: 0 0 10px 10px; font-weight:bold;'>ESTE CUPOM JÁ FOI CANCELADO</div>";
+      }
+
+      content.innerHTML = html;
+      document.getElementById("modal-visualizar-cupom").style.display = "flex";
+    }
+    
+  </script>
+</body>
+</html>
